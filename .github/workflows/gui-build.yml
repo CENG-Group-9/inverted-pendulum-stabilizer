@@ -1,0 +1,25 @@
+name: Build C++ GUI
+
+# 1. When should this run? Every time someone pushes or opens a pull request.
+on: [push, pull_request]
+
+jobs:
+  build-ubuntu:
+    # 2. What OS should the GitHub virtual machine use?
+    runs-on: ubuntu-latest
+
+    steps:
+      # 3. Pulls repository code into the virtual machine
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 4. Installs the exact same dependencies
+      - name: Install Dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake libvulkan-dev qt6-base-dev libqt6serialport6-dev qt6-3d-dev qt6-declarative-dev
+
+      # 5. Navigates to GUI folder and compiles it
+      - name: Compile GUI
+        run: |
+          cd src/gui
+          cmake -B build
+          cmake --build build
