@@ -5,8 +5,7 @@
 
 namespace pendulum::gui {
 
-// Control modes selectable from the GUI control panel. These are part of the
-// link protocol with the firmware: change them in one place, never on one side.
+// Modes selectable from the control panel; part of the firmware link protocol.
 enum class ControlMode : std::uint8_t {
     Idle,
     Lqr,
