@@ -1,6 +1,14 @@
 # inverted-pendulum-stabilizer
 Project of Group-9 for Gebze Technical University CSE396 class which aims to balance a rod while it is upright, from the initial state looking downwards using RL and LQR approaches selectable from a PC GUI control panel.  
 
+## Project layout
+- `src/firmware/` — control loop on the microcontroller (separate team, own toolchain)
+- `src/gui/` — Qt6 desktop app, split into modules:
+  - `core/` — data, units, parsing, interfaces (`pendulum_gui_core`, testable without a display)
+  - `app/` — executable, wires sources to views
+  - `twin/`, `plots/`, `control_panel/` — view modules (to be added; they may depend on `core/` only)
+- `src/models/` — `environment.yml` plus the `rl/` and `lqr/` model work
+
 ## Setup for development and build
 ### GUI
 For gui development, Qt6 libraries and vulkan headers must be installed on your system
@@ -17,6 +25,35 @@ For gui development, Qt6 libraries and vulkan headers must be installed on your 
 4. Add the Qt installation path to your system's Environment Variables so CMake can find it.
 
 ### Models
-Run `conda env create -f environment.yml` to create a conda environment with the required pacakges installed. In your system.
+Run `conda env create -f src/models/environment.yml` to create the conda environment.
+
+### Firmware
+
+## Building
+Every part is an independent project with its own build. There is no top-level
+CMake file on purpose: the firmware, the GUI and the models never share compiled
+code or toolchains.
+
+### GUI
+Needs Ninja, because the presets use it.
+```bash
+cd src/gui
+cmake --preset debug          # configure into src/gui/build/debug
+cmake --build --preset debug  # build
+ctest --preset debug          # run unit tests
+```
+`src/gui/build.sh` and `src/gui/build.bat` do the first two steps for you.
+Without presets: `cmake -S . -B build && cmake --build build`.
+
+### Models
+```bash
+conda env create -f src/models/environment.yml
+conda activate inverted-pendulum
+cd src/models && pytest
+```
+
+### Firmware
+
+
 
 

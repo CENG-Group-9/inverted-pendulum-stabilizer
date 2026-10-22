@@ -13,13 +13,35 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 4. Installs the exact same dependencies
+      # 4. Installs the exact same dependencies, plus the tools used by the checks
       - name: Install Dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake libvulkan-dev qt6-base-dev libqt6serialport6-dev qt6-3d-dev qt6-declarative-dev
-
-      # 5. Navigates to GUI folder and compiles it
-      - name: Compile GUI
         run: |
-          cd src/gui
-          cmake -B build
-          cmake --build build
+          sudo apt-get update
+          sudo apt-get install -y cmake clang-format clang-tidy \
+            libvulkan-dev qt6-base-dev libqt6serialport6-dev \
+            qt6-3d-dev qt6-declarative-dev
+
+      # 5. Navigates to GUI folder and configures it. Warnings are errors in CI.
+      - name: Configure
+        working-directory: src/gui
+        run: cmake -B build -DPENDULUM_WARNINGS_AS_ERRORS=ON
+
+      # 6. Formatting must match .clang-format before merging
+      - name: Check Formatting
+        working-directory: src/gui
+        run: cmake --build build --target format-check
+
+      # 7. Compiles the GUI
+      - name: Compile GUI
+        working-directory: src/gui
+        run: cmake --build build --parallel
+
+      # 8. Runs the unit tests registered with CTest
+      - name: Run Tests
+        working-directory: src/gui
+        run: ctest --test-dir build --output-on-failure
+
+      # 9. Naming and bug checks from .clang-tidy
+      - name: Run clang-tidy
+        working-directory: src/gui
+        run: cmake --build build --target tidy-check

@@ -1,4 +1,35 @@
+# Build output
 build/
-*.user
+build-*/
+out/
+
+# IDE / editor
+.idea/
+.vscode/
 .vs/
+*.user
 CMakeUserPresets.json
+
+# CMake, clangd and clang-tidy generated files
+compile_commands.json
+.cache/
+.clangd/
+
+# Python
+__pycache__/
+*.py[cod]
+.conda/
+.venv/
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Trained model artifacts: binaries are not committed, source stays in src/models
+models/weights/
+*.pt
+*.pth
+*.onnx
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,62 @@
+#!/bin/sh
+# Shared git hook: checks formatting (and clang-tidy when configured) before a push.
+# Enable once per clone:  git config core.hooksPath .githooks
+set -eu
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+
+# Formatting is repo-wide (.clang-format applies to every module).
+# clang-tidy needs a compilation database, which only the GUI project produces.
+gui_dir="$repo_root/src/gui"
+build_dir="$gui_dir/build/debug"
+
+base=$(git rev-parse --verify -q origin/main || git rev-parse HEAD~1)
+changed=$(git diff --name-only --diff-filter=ACMR "$base" -- '*.cpp' '*.h')
+
+if [ -z "$changed" ]; then
+    exit 0
+fi
+
+if ! command -v clang-format >/dev/null 2>&1; then
+    echo "pre-push: clang-format is not installed" >&2
+    exit 1
+fi
+
+# shellcheck disable=SC2086 # intentional word splitting of the file list
+clang-format --dry-run --Werror $changed
+
+cpp_changed=$(printf '%s\n' "$changed" | grep -E '\.cpp$' || true)
+
+if [ -z "$cpp_changed" ]; then
+    exit 0
+fi
+
+if [ ! -f "$build_dir/compile_commands.json" ]; then
+    echo "pre-push: clang-tidy skipped, run 'cmake --preset debug' in src/gui first"
+    exit 0
+fi
+
+if ! command -v clang-tidy >/dev/null 2>&1; then
+    echo "pre-push: clang-tidy is not installed" >&2
+    exit 1
+fi
+
+# Only files present in the compilation database can be analysed. The shared
+# CMake script also strips Qt's GNU-only flags that clang-tidy cannot parse.
+tidy_files=""
+for file in $cpp_changed; do
+    if grep -q "$repo_root/$file" "$build_dir/compile_commands.json"; then
+        tidy_files="$tidy_files;$repo_root/$file"
+    else
+        echo "pre-push: clang-tidy skipped for $file (not in the GUI compilation database)"
+    fi
+done
+tidy_files=${tidy_files#;}
+
+if [ -n "$tidy_files" ]; then
+    cmake "-DCLANG_TIDY_EXECUTABLE=$(command -v clang-tidy)" \
+        "-DBUILD_DIR=$build_dir" \
+        "-DFILES=$tidy_files" \
+        -P "$gui_dir/cmake/run_clang_tidy.cmake"
+fi
