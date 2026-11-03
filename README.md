@@ -3,26 +3,30 @@ Project of Group-9 for Gebze Technical University CSE396 class which aims to bal
 
 ## Project layout
 - `src/firmware/` — control loop on the microcontroller (separate team, own toolchain)
-- `src/gui/` — Qt6 desktop app, split into modules:
-  - `core/` — data, units, parsing, interfaces (`pendulum_gui_core`, testable without a display)
-  - `app/` — executable, wires sources to views
-  - `twin/`, `plots/`, `control_panel/` — view modules (to be added; they may depend on `core/` only)
+- `src/gui/` — Dear ImGui + ImPlot desktop app (C++20, GLFW + OpenGL 3):
+  - `app/main.cpp` — the whole application for now (target `pendulum-gui`)
+  - `libs/` — vendored Dear ImGui, ImPlot, glad and KHR headers, so no system
+    packages are needed for them
 - `src/models/` — `environment.yml` plus the `rl/` and `lqr/` model work
 
 ## Setup for development and build
 ### GUI
-For gui development, Qt6 libraries and vulkan headers must be installed on your system
+For GUI development only GLFW 3, OpenGL, CMake (>= 3.25), Ninja and a C/C++
+compiler are required. Dear ImGui, ImPlot, glad and the KHR headers are vendored
+inside `src/gui/libs/`, so no extra GUI toolkit or graphics API SDK has to be
+installed.
 #### Arch
-`sudo pacman -S base-devel cmake vulkan-headers qt6-base qt6-serialport qt6-3d qt6-declarative`
+`sudo pacman -S base-devel cmake ninja glfw`
 
 #### Ubuntu
-`sudo apt-get update && sudo apt-get install -y cmake libvulkan-dev qt6-base-dev libqt6serialport6-dev qt6-3d-dev qt6-declarative-dev`
+`sudo apt-get update && sudo apt-get install -y build-essential cmake ninja-build libglfw3-dev libgl1-mesa-dev`
 
 #### Windows
-1. Download the Qt Online Installer from the official Qt website (Open Source version).
-2. Run the installer and select the latest Qt 6.x version.
-3. Ensure you check the boxes for Desktop C++ (MSVC or MinGW for Windows) and Qt Serial Port.
-4. Add the Qt installation path to your system's Environment Variables so CMake can find it.
+Use MSYS2 with the MinGW64 environment:
+`pacman -S --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-glfw`
+
+Add `C:\msys64\mingw64\bin` to `PATH` before building and running, because the
+executable looks for its DLLs (for example `glfw3.dll`) there.
 
 ### Models
 Run `conda env create -f src/models/environment.yml` to create the conda environment.
@@ -35,14 +39,20 @@ CMake file on purpose: the firmware, the GUI and the models never share compiled
 code or toolchains.
 
 ### GUI
-Needs Ninja, because the presets use it.
+Needs CMake (>= 3.25) and Ninja, because the presets use it.
 ```bash
 cd src/gui
 cmake --preset debug          # configure into src/gui/build/debug
 cmake --build --preset debug  # build
-ctest --preset debug          # run unit tests
 ```
-`src/gui/build.sh` and `src/gui/build.bat` do the first two steps for you.
+The `release` preset does the same for an optimized build:
+```bash
+cd src/gui
+cmake --preset release
+cmake --build --preset release
+```
+`src/gui/build.sh` and `src/gui/build.bat` do the configure and build steps of
+the `debug` preset for you.
 Without presets: `cmake -S . -B build && cmake --build build`.
 
 ### Models
@@ -53,7 +63,6 @@ cd src/models && pytest
 ```
 
 ### Firmware
-
 
 
 

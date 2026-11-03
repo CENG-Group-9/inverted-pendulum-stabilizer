@@ -1,7 +1,8 @@
 # Project guide for coding agents
 
 Inverse pendulum stabilizer: a microcontroller runs the control loop (LQR or RL),
-and a Qt6 GUI (C++20) shows telemetry and sends mode commands over USB.
+and a Dear ImGui + ImPlot GUI (C++20, GLFW + OpenGL 3) shows telemetry and sends
+mode commands over USB.
 
 ## Hard rules (ask me before breaking any)
 - The control loop runs on the microcontroller only. The GUI and USB are never
@@ -38,8 +39,8 @@ and a Qt6 GUI (C++20) shows telemetry and sends mode commands over USB.
 - Put units in names as a full word: `_meters`, `_radians`, `_seconds`, `_newtons`.
   No `x`, `th`, `dt`. Convert units at module boundaries only.
 - No abbreviations except `id` and `ms`. Name the role, not the type or container.
-- Qt overrides (`paintEvent`) and Qt API calls keep Qt's own names. Our own
-  signals, slots and functions follow the table.
+- ImGui, ImPlot and GLFW API calls (for example `ImGui::Begin`, `ImPlot::BeginPlot`,
+  `glfwPollEvents`) keep their own names. Our own functions follow the table.
 
 ## C++ principles
 - Initialize every variable at declaration, with `{}`. `const` by default.
@@ -52,8 +53,7 @@ and a Qt6 GUI (C++20) shows telemetry and sends mode commands over USB.
   `override`, and `final` on leaf classes. Prefer composition over inheritance.
 - Rule of zero. If you write a destructor, copy or move, define or delete all five.
 - Every resource has an owner that releases it. No raw `new` / `delete`; use
-  `std::unique_ptr`. Raw pointers and references only observe. (Exception: Qt
-  objects created with a parent.)
+  `std::unique_ptr`. Raw pointers and references only observe.
 - Validate input at module boundaries (serial data, user input). Report expected
   failures with `std::optional` or a status value, not exceptions. Never ignore
   an error.

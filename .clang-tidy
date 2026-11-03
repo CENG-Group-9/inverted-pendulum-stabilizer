@@ -1,4 +1,4 @@
-# Run on project sources only (never on build/ output such as moc_*.cpp).
+# Run on project sources only.
 Checks: >
   -*,
   bugprone-*,
@@ -11,8 +11,9 @@ Checks: >
   readability-identifier-naming
 WarningsAsErrors: 'readability-identifier-naming'
 # Diagnose our own headers too (paths are absolute during analysis), while
-# keeping Qt and generated moc/autogen files out of the report.
-HeaderFilterRegex: '.*/src/.*'
+# keeping the vendored libraries in src/gui/libs/ out of the report. The regex
+# is POSIX (no lookahead), so list our source folders; add new ones here.
+HeaderFilterRegex: '.*/src/(firmware|gui/app)/.*'
 CheckOptions:
   - { key: readability-identifier-naming.NamespaceCase,           value: lower_case }
   - { key: readability-identifier-naming.ClassCase,               value: CamelCase }

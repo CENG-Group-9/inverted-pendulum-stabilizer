@@ -12,7 +12,7 @@ gui_dir="$repo_root/src/gui"
 build_dir="$gui_dir/build/debug"
 
 base=$(git rev-parse --verify -q origin/main || git rev-parse HEAD~1)
-changed=$(git diff --name-only --diff-filter=ACMR "$base" -- '*.cpp' '*.h')
+changed=$(git diff --name-only --diff-filter=ACMR "$base" -- '*.cpp' '*.h' | grep -v '^src/gui/libs/' || true)
 
 if [ -z "$changed" ]; then
     exit 0
@@ -42,8 +42,7 @@ if ! command -v clang-tidy >/dev/null 2>&1; then
     exit 1
 fi
 
-# Only files present in the compilation database can be analysed. The shared
-# CMake script also strips Qt's GNU-only flags that clang-tidy cannot parse.
+# Only files present in the compilation database can be analysed.
 tidy_files=""
 for file in $cpp_changed; do
     if grep -q "$repo_root/$file" "$build_dir/compile_commands.json"; then
