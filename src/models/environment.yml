@@ -11,3 +11,4 @@ dependencies:
   - pip:
     - gymnasium
     - stable-baselines3
+    - mujoco
