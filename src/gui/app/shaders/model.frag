@@ -5,6 +5,9 @@
 struct Material {
     sampler2D diffuse;
     sampler2D specular;
+    vec3 ambient_color;
+    vec3 diffuse_color;
+    vec3 specular_color;
     float shininess;
 };
 
@@ -44,10 +47,13 @@ vec3 calc_dir_light(DirLight light, vec3 normal, vec3 view_dir)
     vec3 halfway = normalize(light_dir + view_dir);
     float specular_strength = pow(max(dot(normal, halfway), 0.0), material.shininess);
 
-    vec3 diffuse_color = vec3(texture(material.diffuse, tex_coords));
-    vec3 specular_color = vec3(texture(material.specular, tex_coords));
+    vec3 diffuse_sample = vec3(texture(material.diffuse, tex_coords));
+    vec3 specular_sample = vec3(texture(material.specular, tex_coords));
 
-    return light.ambient * diffuse_color
+    vec3 diffuse_color = diffuse_sample * material.diffuse_color;
+    vec3 specular_color = specular_sample * material.specular_color;
+
+    return light.ambient * material.ambient_color * diffuse_color
          + light.diffuse * diffuse_strength * diffuse_color
          + light.specular * specular_strength * specular_color;
 }
@@ -64,10 +70,13 @@ vec3 calc_point_light(PointLight light, vec3 normal, vec3 view_dir)
                              + light.linear * distance
                              + light.quadratic * distance * distance);
 
-    vec3 diffuse_color = vec3(texture(material.diffuse, tex_coords));
-    vec3 specular_color = vec3(texture(material.specular, tex_coords));
+    vec3 diffuse_sample = vec3(texture(material.diffuse, tex_coords));
+    vec3 specular_sample = vec3(texture(material.specular, tex_coords));
 
-    return attenuation * (light.ambient * diffuse_color
+    vec3 diffuse_color = diffuse_sample * material.diffuse_color;
+    vec3 specular_color = specular_sample * material.specular_color;
+
+    return attenuation * (light.ambient * material.ambient_color * diffuse_color
                         + light.diffuse * diffuse_strength * diffuse_color
                         + light.specular * specular_strength * specular_color);
 }

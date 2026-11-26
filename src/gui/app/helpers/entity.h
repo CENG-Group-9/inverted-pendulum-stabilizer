@@ -1,11 +1,11 @@
 #ifndef ENTITY_H
 #define ENTITY_H
 
+#include "model.h"
+#include "shader.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <string>
-#include "model.h"
-#include "shader.h"
 
 struct Entity {
     std::string name;
@@ -13,19 +13,21 @@ struct Entity {
     // Transform
     glm::vec3 position = glm::vec3(0.0f);
     glm::vec3 rotation = glm::vec3(0.0f);
-    glm::vec3 scale    = glm::vec3(1.0f);
+    glm::vec3 scale = glm::vec3(1.0f);
+    // Rotation and scale happen around this model-space point.
+    glm::vec3 pivot_meters = glm::vec3(0.0f);
 
     // Rendering
-    Model  model;
+    Model model;
     Shader* shader = nullptr;
     glm::vec3 color = glm::vec3(1.0f);
 
     // Collision
-    bool isSolid   = false;
-    bool isRoom    = false;
+    bool isSolid = false;
+    bool isRoom = false;
     glm::vec3 aabbInnerMin = glm::vec3(0.0f);
     glm::vec3 aabbInnerMax = glm::vec3(0.0f);
-    
+
     // for point light renders
     bool usesBlending = false;
 
@@ -49,14 +51,13 @@ struct Entity {
         mat = glm::rotate(mat, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
         mat = glm::rotate(mat, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
         mat = glm::scale(mat, scale);
+        mat = glm::translate(mat, -pivot_meters);
         return mat;
     }
 
     std::pair<glm::vec3, glm::vec3> getWorldAABB() const {
-        return {
-            position + aabbMin * scale,
-            position + aabbMax * scale
-        };
+        return {position + (aabbMin - pivot_meters) * scale,
+                position + (aabbMax - pivot_meters) * scale};
     }
 
     void computeAABB(float wallThickness = 1.0f) {

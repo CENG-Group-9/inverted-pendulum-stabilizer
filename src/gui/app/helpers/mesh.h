@@ -3,9 +3,11 @@
 
 #include "glad/gl.h" // holds all OpenGL type declarations
 
+#include <assimp/material.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "glm/detail/type_vec.hpp"
 #include "shader.h"
 
 #include <string>
@@ -37,20 +39,29 @@ struct Texture {
   string path;
 };
 
+struct SurfaceMaterial {
+  glm::vec3 ambient_color{1.0f};
+  glm::vec3 diffuse_color{1.0f};
+  glm::vec3 specular_color{0.0f};
+  float shininess{32.0f};
+};
+
 class Mesh {
 public:
   // mesh Data
   vector<Vertex> vertices;
   vector<unsigned int> indices;
   vector<Texture> textures;
+  SurfaceMaterial material;
   unsigned int VAO;
 
   // constructor
   Mesh(vector<Vertex> vertices, vector<unsigned int> indices,
-       vector<Texture> textures) {
+       vector<Texture> textures, SurfaceMaterial surface_material = {}) {
     this->vertices = vertices;
     this->indices = indices;
     this->textures = textures;
+    this->material = surface_material;
 
     // now that we have all the required data, set the vertex buffers and its
     // attribute pointers.
@@ -59,26 +70,35 @@ public:
 
   // render the mesh
   void Draw(Shader &shader) {
+    int diffuseSlot = -1;
     int specularSlot = -1;
     for (unsigned int i = 0; i < textures.size(); i++) {
       glActiveTexture(GL_TEXTURE0 + i);
       glBindTexture(GL_TEXTURE_2D, textures[i].id);
       if (textures[i].type == "texture_diffuse")
-        glUniform1i(glGetUniformLocation(shader.ID, "material.diffuse"), i);
-      else if (textures[i].type == "texture_specular") {
-        glUniform1i(glGetUniformLocation(shader.ID, "material.specular"), i);
-        specularSlot = i;
-      }
+        diffuseSlot = static_cast<int>(i);
+      else if (textures[i].type == "texture_specular")
+        specularSlot = static_cast<int>(i);
     }
 
+    int nextSlot = static_cast<int>(textures.size());
+    if (diffuseSlot == -1) {
+      diffuseSlot = nextSlot++;
+      glActiveTexture(GL_TEXTURE0 + diffuseSlot);
+      glBindTexture(GL_TEXTURE_2D, whiteTexture);
+    }
     if (specularSlot == -1) {
-      int slot = textures.size();
-      glActiveTexture(GL_TEXTURE0 + slot);
-      glBindTexture(GL_TEXTURE_2D, blackTexture);
-      glUniform1i(glGetUniformLocation(shader.ID, "material.specular"), slot);
+      specularSlot = nextSlot++;
+      glActiveTexture(GL_TEXTURE0 + specularSlot);
+      glBindTexture(GL_TEXTURE_2D, whiteTexture);
     }
 
-    shader.setFloat("material.shininess", 32.0f);
+    shader.setInt("material.diffuse", diffuseSlot);
+    shader.setInt("material.specular", specularSlot);
+    shader.setVec3("material.ambient_color", material.ambient_color);
+    shader.setVec3("material.diffuse_color", material.diffuse_color);
+    shader.setVec3("material.specular_color", material.specular_color);
+    shader.setFloat("material.shininess", material.shininess);
 
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, static_cast<unsigned int>(indices.size()),
@@ -87,23 +107,27 @@ public:
     glActiveTexture(GL_TEXTURE0);
   }
 
-  static void initBlackTexture() {
-    if (blackTextureInitialized)
+  static void initWhiteTexture() {
+    if (whiteTextureInitialized)
       return;
-    unsigned char black[] = {0, 0, 0, 255};
-    glGenTextures(1, &blackTexture);
-    glBindTexture(GL_TEXTURE_2D, blackTexture);
+    unsigned char white[] = {255, 255, 255, 255};
+    glGenTextures(1, &whiteTexture);
+    glBindTexture(GL_TEXTURE_2D, whiteTexture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-                 black);
-    blackTextureInitialized = true;
+                 white);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    whiteTextureInitialized = true;
   }
 
 private:
   // render data
   unsigned int VBO, EBO;
 
-  inline static unsigned int blackTexture;
-  inline static bool blackTextureInitialized;
+  inline static unsigned int whiteTexture;
+  inline static bool whiteTextureInitialized;
 
   // initializes all the buffer objects/arrays
   void setupMesh() {

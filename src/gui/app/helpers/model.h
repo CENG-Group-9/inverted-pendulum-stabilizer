@@ -3,6 +3,7 @@
 
 #include "glad/gl.h" 
 
+#include <assimp/material.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include "stb_image.h"
@@ -147,6 +148,16 @@ private:
         // specular: texture_specularN
         // normal: texture_normalN
 
+        aiColor3D ambient(1.0f, 1.0f, 1.0f);
+        aiColor3D diffuse(1.0f, 1.0f, 1.0f);
+        aiColor3D specular(0.0f, 0.0f, 0.0f);
+        float shininess = 32.0f;
+
+        material->Get(AI_MATKEY_COLOR_AMBIENT, ambient);
+        material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse);
+        material->Get(AI_MATKEY_COLOR_SPECULAR, specular);
+        material->Get(AI_MATKEY_SHININESS, shininess);
+
         // 1. diffuse maps
         vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
         textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
@@ -161,7 +172,13 @@ private:
         textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
         
         // return a mesh object created from the extracted mesh data
-        return Mesh(vertices, indices, textures);
+        SurfaceMaterial surface_material{};
+        surface_material.ambient_color = glm::vec3(ambient.r, ambient.g, ambient.b);
+        surface_material.diffuse_color = glm::vec3(diffuse.r, diffuse.g, diffuse.b);
+        surface_material.specular_color = glm::vec3(specular.r, specular.g, specular.b);
+        surface_material.shininess = shininess;
+
+        return Mesh(vertices, indices, textures, surface_material);
     }
 
     // checks all material textures of a given type and loads the textures if they're not loaded yet.
