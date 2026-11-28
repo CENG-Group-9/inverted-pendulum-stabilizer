@@ -13,10 +13,13 @@ class FatimaSwingUpController:
 
     def __init__(self):
 
-        # Preliminary controller gains
-        self.k_energy = 15.0
+        # Optimized controller gains
+        self.k_energy = 14.0
         self.k_position = 8.0
         self.k_velocity = 2.0
+
+        # Initial excitation acceleration
+        self.kick_acceleration = 7.0
 
         # Desired energy with additional energy margin
         self.target_energy = 1.06 * 2.0 * m * g * l
@@ -62,7 +65,7 @@ class FatimaSwingUpController:
             and abs(x_dot) < 0.05
             and abs(x) < 0.05
         ):
-            acceleration += 3.0
+            acceleration += self.kick_acceleration
 
         # Pendulum angular acceleration
         theta_ddot = (
@@ -100,6 +103,9 @@ if __name__ == "__main__":
 
     print("Target energy:",
           controller.target_energy, "J")
+
+    print("Initial excitation acceleration:",
+          controller.kick_acceleration, "m/s^2")
 
     test_states = [
         ("Hanging position",
