@@ -1,4 +1,4 @@
-"""Independent hybrid energy-based swing-up and LQR controller."""
+"""Independent hybrid LQR controller with predictive track protection."""
 
 import numpy as np
 
@@ -30,6 +30,11 @@ class FatimaHybridController:
 
         self.k_boundary = 30.0
         self.k_braking = 5.0
+
+        # Predictive braking parameters
+        self.braking_acceleration = 8.0
+        self.predictive_limit = 0.35
+        self.k_predictive = 25.0
 
         self.mode = "swingup"
 
@@ -64,17 +69,67 @@ class FatimaHybridController:
             ):
                 self.mode = "swingup"
 
-    def protect_track(self, state, force):
-        """Reduce the risk of exceeding track limits."""
+    def predict_stopping_position(self, state):
+        """Estimate outward stopping position."""
 
         x, x_dot, _, _ = state
 
         direction = np.sign(x)
 
+        if direction == 0:
+            direction = np.sign(x_dot)
+
         outward_velocity = max(
             0.0, direction * x_dot
         )
 
+        stopping_distance = (
+            outward_velocity**2
+            / (2.0 * self.braking_acceleration)
+        )
+
+        predicted_position = (
+            abs(x) + stopping_distance
+        )
+
+        return predicted_position
+
+    def protect_track(self, state, force):
+        """Apply predictive and position-based braking."""
+
+        x, x_dot, _, _ = state
+
+        direction = np.sign(x)
+
+        if direction == 0:
+            direction = np.sign(x_dot)
+
+        outward_velocity = max(
+            0.0, direction * x_dot
+        )
+
+        # Predict the stopping position
+        predicted_position = (
+            self.predict_stopping_position(state)
+        )
+
+        # Start braking before reaching the boundary
+        if (
+            outward_velocity > 0.0
+            and predicted_position > self.predictive_limit
+        ):
+
+            predictive_correction = (
+                self.k_predictive
+                * (
+                    predicted_position
+                    - self.predictive_limit
+                )
+            )
+
+            force -= direction * predictive_correction
+
+        # Existing soft boundary protection
         if abs(x) > self.soft_limit:
 
             correction = (
@@ -85,7 +140,7 @@ class FatimaHybridController:
 
             force -= direction * correction
 
-        # Strong inward correction near the boundary
+        # Emergency inward force
         if abs(x) >= self.hard_limit:
 
             force = -direction * F_max
@@ -125,39 +180,51 @@ if __name__ == "__main__":
 
     controller = FatimaHybridController()
 
-    print("Independent Hybrid Controller")
-    print("=============================")
+    print("Predictive Hybrid Controller")
+    print("============================")
 
     test_states = [
         ("Hanging position",
          [0.0, 0.0, np.pi, 0.0]),
 
-        ("Near upright - 8 degrees",
+        ("Near upright",
          [0.0, 0.0, np.radians(8), 0.0]),
 
-        ("Hysteresis - 18 degrees",
-         [0.0, 0.0, np.radians(18), 0.0]),
+        ("Fast outward movement - right",
+         [0.25, 1.5, np.pi, 0.0]),
 
-        ("Loss of balance - 40 degrees",
-         [0.0, 0.0, np.radians(40), 0.0]),
+        ("Fast outward movement - left",
+         [-0.25, -1.5, np.pi, 0.0]),
 
-        ("Near upright but rotating quickly",
-         [0.0, 0.0, np.radians(5), 8.0]),
+        ("Moving toward track center",
+         [0.25, -1.5, np.pi, 0.0]),
 
-        ("Near right track boundary",
+        ("Near right boundary",
          [0.37, 0.2, np.pi, 0.0]),
 
-        ("Near left track boundary",
+        ("Near left boundary",
          [-0.37, -0.2, np.pi, 0.0])
     ]
 
     for name, state in test_states:
+
+        controller.reset()
+
+        predicted_position = (
+            controller.predict_stopping_position(state)
+        )
 
         force = controller.compute_force(state)
         action = force / F_max
 
         print(f"\nTest: {name}")
         print("Controller mode:", controller.mode)
+
+        print(
+            f"Predicted stopping position: "
+            f"{predicted_position:.4f} m"
+        )
+
         print(f"Motor force: {force:.6f} N")
         print(f"Normalized action: {action:.6f}")
         print("Within force limit:", abs(force) <= F_max)
