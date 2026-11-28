@@ -11,7 +11,7 @@ Project of Group-9 for Gebze Technical University CSE396 class which aims to bal
 
 ## Setup for development and build
 ### GUI
-For gui development, Qt6 libraries and vulkan headers must be installed on your system
+For gui development, opengl GLFW, and OpenGL headers must be installed on your system
 #### Arch
 `sudo pacman -S base-devel cmake vulkan-headers qt6-base qt6-serialport qt6-3d qt6-declarative`
 

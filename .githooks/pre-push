@@ -43,7 +43,6 @@ if ! command -v clang-tidy >/dev/null 2>&1; then
 fi
 
 # Only files present in the compilation database can be analysed. The shared
-# CMake script also strips Qt's GNU-only flags that clang-tidy cannot parse.
 tidy_files=""
 for file in $cpp_changed; do
     if grep -q "$repo_root/$file" "$build_dir/compile_commands.json"; then

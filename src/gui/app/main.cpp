@@ -21,6 +21,8 @@ namespace pendulum::gui {
 int width = 1920;
 int height = 1080;
 GLFWwindow* window = NULL;
+float deltaTime = 0;
+float last_time = 0;
 
 namespace {
 // Callback functions for GLFW
@@ -86,6 +88,10 @@ int run() {
     StatusController status_controller;
 
     while (!glfwWindowShouldClose(window)) {
+        // calculate deltatime
+        float cur_time = glfwGetTime();
+        float deltaTime = cur_time - last_time;
+        last_time = cur_time;
         // main render loop
         int framebuffer_width_pixels = 0;
         int framebuffer_height_pixels = 0;
@@ -98,8 +104,8 @@ int run() {
         // update system status
         status_controller.update_status();
         // Render digital twin
-        // digital_twin.update_pose(status_controller.current_status());
-        digital_twin.render(framebuffer_width_pixels, framebuffer_height_pixels, status_controller.current_status());
+        digital_twin.render(window, &deltaTime, framebuffer_width_pixels, framebuffer_height_pixels,
+                            status_controller.current_status());
 
         // Render Dear ImGui
         ImGui_ImplOpenGL3_NewFrame();
@@ -111,7 +117,7 @@ int run() {
         // otherwise read actual data here
         // PlotsWindow::demo_status_data();
         PlotsWindow::show_plots_window(status_controller.current_status());
-
+        ImGui::ShowDemoWindow();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -123,7 +129,8 @@ int run() {
     return 0;
 }
 
-void terminate() {
+void terminate() 
+{
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImPlot::DestroyContext();

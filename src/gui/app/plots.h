@@ -1,6 +1,8 @@
 #pragma once
 #include "system_status.h"
 #include <cmath>
+#include <cstddef>
+#include <deque>
 #include <imgui.h>
 #include <implot.h>
 #include <iostream>
@@ -12,8 +14,11 @@ enum class GraphOption { CartPosition, CartVelocity, RodAngle, RodAngularVelocit
 
 class PlotsWindow {
   public:
+    // About 30 seconds of history at 100 Hz. Older samples are dropped.
+    static constexpr std::size_t kMaximumSamples = 3000;
+
     static inline unsigned int num_measurements;
-    static inline std::vector<SystemStatus> status_data;
+    static inline std::deque<SystemStatus> status_data;
     static inline bool cart_position_active = false;
     static inline bool cart_velocity_active = false;
     static inline bool rod_angle_active = false;
@@ -21,7 +26,7 @@ class PlotsWindow {
 
     static void show_plots_window(const SystemStatus& current_system_status,
                                   bool* p_open = nullptr) {
-        status_data.push_back(current_system_status);
+        record_sample(current_system_status);
 
         if (ImGui::Begin("Plots", p_open)) {
             ImGui::Checkbox("cart position(m) vs time(s)", &cart_position_active);
@@ -47,6 +52,20 @@ class PlotsWindow {
         ImGui::End();
     }
 
+    // Skips repeated frames (same timestamp) and keeps the history bounded.
+    static void record_sample(const SystemStatus& new_status) {
+        const bool is_new_sample =
+            status_data.empty() || status_data.back().time_seconds != new_status.time_seconds;
+        if (!is_new_sample) {
+            return;
+        }
+
+        status_data.push_back(new_status);
+        if (status_data.size() > kMaximumSamples) {
+            status_data.pop_front();
+        }
+    }
+
     static void show_plot(GraphOption option, const std::string& graph_name,
                           const std::string& label_id) {
         const std::vector<double> data_column = get_column(option);
@@ -65,10 +84,11 @@ class PlotsWindow {
         constexpr double kDemoAngularFrequency = 2.0;
 
         SystemStatus new_status{};
-        new_status.time_seconds = static_cast<double>(status_data.size()) * kSamplePeriodSeconds;
+        new_status.time_seconds =
+            status_data.empty() ? 0.0 : status_data.back().time_seconds + kSamplePeriodSeconds;
         new_status.cart_position_meters =
             kDemoAmplitudeMeters * std::sin(kDemoAngularFrequency * new_status.time_seconds);
-        status_data.push_back(new_status);
+        record_sample(new_status);
     }
 
     static std::vector<double> get_column(GraphOption option) {
