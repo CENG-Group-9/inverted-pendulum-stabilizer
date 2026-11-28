@@ -1,4 +1,4 @@
-"""Diagnose swing-up failures under randomized friction."""
+"""Diagnose delayed swing-up and LQR capture problems."""
 
 import numpy as np
 
@@ -7,16 +7,13 @@ from simulation.env import CartPoleEnv
 from lqr.fatima_hybrid import FatimaHybridController
 
 
-def diagnose(seed, gains=(15, 8, 2)):
+def diagnose(seed):
 
     env = CartPoleEnv(randomize_friction=True)
 
     controller = FatimaHybridController()
 
-    controller.swingup.k_energy = gains[0]
-    controller.swingup.k_position = gains[1]
-    controller.swingup.k_velocity = gains[2]
-
+    # Use the latest default controller parameters
     controller.reset()
     env.reset(seed=seed)
 
@@ -57,7 +54,17 @@ def diagnose(seed, gains=(15, 8, 2)):
     print(f"\nDiagnostic seed: {seed}")
     print("==========================")
 
-    print("Controller gains:", gains)
+    print("Energy gain:",
+          controller.swingup.k_energy)
+
+    print("Position gain:",
+          controller.swingup.k_position)
+
+    print("Velocity gain:",
+          controller.swingup.k_velocity)
+
+    print("Initial excitation:",
+          controller.swingup.kick_acceleration)
 
     print("Cart viscous friction:",
           env.model.dof_damping[cart_dof])
@@ -83,9 +90,44 @@ def diagnose(seed, gains=(15, 8, 2)):
 
                 mode_switches += 1
 
+                x, x_dot, theta, theta_dot = state
+
+                theta = (
+                    (theta + np.pi) % (2 * np.pi)
+                ) - np.pi
+
                 print(
-                    f"Mode switch at {step * dt:.3f} s: "
+                    f"\nMode switch at {step * dt:.3f} s: "
                     f"{previous_mode} -> {controller.mode}"
+                )
+
+                print(f"Cart position: {x:.4f} m")
+
+                print(f"Cart velocity: {x_dot:.4f} m/s")
+
+                print(
+                    f"Pole angle: "
+                    f"{np.degrees(theta):.4f} degrees"
+                )
+
+                print(
+                    f"Pole angular velocity: "
+                    f"{theta_dot:.4f} rad/s"
+                )
+
+                print(
+                    f"Pendulum energy: "
+                    f"{controller.swingup.compute_energy(state):.6f} J"
+                )
+
+                print(
+                    f"Predicted stopping position: "
+                    f"{controller.predict_stopping_position(state):.4f} m"
+                )
+
+                print(
+                    f"Commanded force: "
+                    f"{action * params.MAX_FORCE_NEWTONS:.4f} N"
                 )
 
                 previous_mode = controller.mode
@@ -164,7 +206,18 @@ def diagnose(seed, gains=(15, 8, 2)):
         )
 
         print("Mode switches:", mode_switches)
+
         print("Final controller mode:", controller.mode)
+
+        print("Episode length:", step + 1)
+
+        print("Terminated:", terminated)
+
+        print(
+            "Track limit reached:",
+            max(positions)
+            >= params.CART_CENTER_TRAVEL_LIMIT_METERS
+        )
 
     finally:
 
@@ -173,7 +226,6 @@ def diagnose(seed, gains=(15, 8, 2)):
 
 if __name__ == "__main__":
 
-    diagnose(seed=206)
-    diagnose(seed=207)
-    diagnose(seed=215)
-    diagnose(seed=218)
+    diagnose(seed=504)
+    diagnose(seed=505)
+    diagnose(seed=507)

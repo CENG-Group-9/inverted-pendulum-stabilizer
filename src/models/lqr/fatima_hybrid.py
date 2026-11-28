@@ -1,4 +1,5 @@
-"""Independent hybrid LQR controller with predictive track protection."""
+"""Independent hybrid LQR with predictive track protection
+and velocity-aware switching."""
 
 import numpy as np
 
@@ -24,6 +25,9 @@ class FatimaHybridController:
 
         self.capture_position = 0.25
 
+        # Cart velocity restriction for LQR capture
+        self.capture_cart_velocity = 0.60
+
         # Track protection parameters
         self.soft_limit = 0.30
         self.hard_limit = 0.36
@@ -44,7 +48,7 @@ class FatimaHybridController:
         self.mode = "swingup"
 
     def update_mode(self, state):
-        """Select swing-up or LQR using hysteresis."""
+        """Select swing-up or LQR using velocity-aware hysteresis."""
 
         x, x_dot, theta, theta_dot = state
 
@@ -58,6 +62,7 @@ class FatimaHybridController:
                 abs(theta) <= self.enter_angle
                 and abs(theta_dot) <= self.enter_velocity
                 and abs(x) <= self.capture_position
+                and abs(x_dot) <= self.capture_cart_velocity
             ):
                 self.mode = "lqr"
 
@@ -180,15 +185,24 @@ if __name__ == "__main__":
 
     controller = FatimaHybridController()
 
-    print("Predictive Hybrid Controller")
-    print("============================")
+    print("Velocity-Aware Predictive Hybrid Controller")
+    print("===========================================")
+
+    print(
+        "Capture cart velocity limit:",
+        controller.capture_cart_velocity,
+        "m/s"
+    )
 
     test_states = [
         ("Hanging position",
          [0.0, 0.0, np.pi, 0.0]),
 
-        ("Near upright",
-         [0.0, 0.0, np.radians(8), 0.0]),
+        ("Near upright - low cart velocity",
+         [0.0, 0.3, np.radians(8), 0.0]),
+
+        ("Near upright - high cart velocity",
+         [0.0, 0.8, np.radians(8), 0.0]),
 
         ("Fast outward movement - right",
          [0.25, 1.5, np.pi, 0.0]),
